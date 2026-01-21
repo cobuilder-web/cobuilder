@@ -1,0 +1,358 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>cobuilder – Your Construction Estimation Partner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="https://i.ibb.co/zWmTqjR3/co-builder-logo-png.png" type="image/png">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{margin:0;font-family:Segoe UI;background:#f1f5f9}
+
+/* ---------- HEADER ---------- */
+.header{
+  background:#0f172a;
+  color:#fff;
+  padding:14px 20px;
+}
+.header-inner{
+  max-width:1200px;
+  margin:auto;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:15px;
+}
+.header img{
+  width:60px;
+}
+.brand h1{
+  margin:0;
+  font-size:22px;
+  font-weight:700;
+}
+.brand p{
+  margin:2px 0 0;
+  font-size:14px;
+  color:#cbd5f5;
+}
+
+/* ---------- RESPONSIVE HEADER ---------- */
+@media(max-width:768px){
+  .header-inner{
+    flex-direction:column;
+    text-align:center;
+  }
+  .brand h1{font-size:20px}
+  .brand p{font-size:13px}
+}
+
+/* ---------- COMMON ---------- */
+.container{max-width:1200px;margin:auto;padding:20px}
+.card{background:#fff;padding:20px;border-radius:14px;margin-bottom:20px;
+box-shadow:0 10px 25px rgba(0,0,0,.08)}
+h2{color:#0f172a;text-align:center;margin-bottom:15px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:15px}
+input{width:100%;padding:10px;margin-top:6px;border:1px solid #ccc;border-radius:6px}
+button{padding:10px 14px;border:none;border-radius:8px;background:#2563eb;color:#fff;cursor:pointer}
+button:hover{background:#1e40af}
+.total{font-size:24px;font-weight:700;color:#16a34a;text-align:center}
+.history-item{border-bottom:1px dashed #ccc;padding:12px 0}
+.hide{display:none}
+.small{font-size:14px;color:#555}
+.action-btn{margin:5px 5px 0 0}
+.danger{background:#dc2626}
+.danger:hover{background:#991b1b}
+.logo-center{width:90px;margin:auto;display:block}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="container" id="loginBox">
+  <div class="card">
+    <img src="https://i.ibb.co/zWmTqjR3/co-builder-logo-png.png" alt="co builder logo png" class="logo-center">
+    <h2>🔐 Login</h2>
+    <input id="username" placeholder="Username">
+    <input id="password" type="password">
+    <br><br>
+    <button onclick="login()">LOGIN</button>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="hide" id="app">
+
+<!-- HEADER WITH LOGO + NAME + TAGLINE -->
+<div class="header">
+  <div class="header-inner">
+    <img src="https://i.ibb.co/zWmTqjR3/co-builder-logo-png.png" alt="Company Logo">
+    <div class="brand">
+      <h1>cobuilder</h1>
+      <p>Your Construction Cost Estimation Partner</p>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+<div class="card">
+<h2>Project Details</h2>
+<input id="projectName" placeholder="Project Name">
+<input id="location" placeholder="Location">
+</div>
+
+<div class="card">
+<h2>Material Cost</h2>
+<div class="grid">
+<input id="cement" placeholder="Cement ₹">
+<input id="steel" placeholder="Steel ₹">
+<input id="sand" placeholder="Sand ₹">
+<input id="bricks" placeholder="Bricks ₹">
+<input id="electrical materials" placeholder="electrical materials ₹">
+<input id="plumbing materials" placeholder="plumbing Materials ₹">
+<input id="other" placeholder="Other ₹">
+</div>
+</div>
+
+<div class="card">
+<h2>Work Cost</h2>
+<div class="grid">
+<input id="labour" placeholder="Labour ₹">
+<input id="electrical" placeholder="Electrical ₹">
+<input id="plumbing" placeholder="Plumbing ₹">
+<input id="painting" placeholder="Painting ₹">
+<input id="other" placeholder="Other ₹">
+</div>
+</div>
+
+<div class="card">
+<h2>Profit & GST</h2>
+<div class="grid">
+<input id="profitPercent" placeholder="Profit %">
+<input id="gstPercent" placeholder="GST %">
+</div>
+</div>
+
+<div class="card">
+<button onclick="calculate()">CALCULATE & SAVE</button>
+<div id="result"></div>
+<canvas id="chart" style="max-width:300px;margin:auto"></canvas>
+</div>
+
+<div class="card">
+<h2>📁 Project History</h2>
+<div id="projectHistory"></div>
+</div>
+
+<button onclick="logout()">LOGOUT</button>
+
+</div>
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+let currentUser=null;
+let chartObj=null;
+
+/* ---------- LOGIN ---------- */
+function login(){
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value.trim();
+  if(!u || !p){ alert("Enter username and password"); return; }
+  localStorage.setItem("loggedUser",u);
+  if(!localStorage.getItem("projects_"+u)) localStorage.setItem("projects_"+u,JSON.stringify([]));
+  startApp();
+}
+
+function startApp(){
+  currentUser = localStorage.getItem("loggedUser");
+  document.getElementById('loginBox').classList.add("hide");
+  document.getElementById('app').classList.remove("hide");
+  loadHistory();
+}
+
+if(localStorage.getItem("loggedUser")) startApp();
+
+function logout(){
+  localStorage.removeItem("loggedUser");
+  location.reload();
+}
+
+/* ---------- CALCULATE & SAVE ---------- */
+function calculate(){
+  const nameVal = document.getElementById('projectName').value.trim();
+  const locVal = document.getElementById('location').value.trim();
+  if(!nameVal || !locVal){ alert("Enter Project Name and Location"); return; }
+
+  function num(v){ return (v && !isNaN(v)) ? +v : 0; }
+
+  // Current date & time
+  const now = new Date();
+  const datetime = now.toLocaleString('en-IN', { hour12: true });
+
+  let p = {
+    name: nameVal,
+    location: locVal,
+    material: num(document.getElementById('cement').value) +
+              num(document.getElementById('steel').value) +
+              num(document.getElementById('sand').value) +
+              num(document.getElementById('bricks').value),
+    works: num(document.getElementById('labour').value) +
+           num(document.getElementById('electrical').value) +
+           num(document.getElementById('plumbing').value) +
+           num(document.getElementById('painting').value) +
+           num(document.getElementById('other').value),
+    profitPercent: num(document.getElementById('profitPercent').value),
+    gstPercent: num(document.getElementById('gstPercent').value),
+    datetime: datetime // date & time save
+  };
+
+  p.base = p.material + p.works;
+  p.profit = p.base * (p.profitPercent/100);
+  p.subtotal = p.base + p.profit;
+  p.gst = p.subtotal * (p.gstPercent/100);
+  p.total = p.subtotal + p.gst;
+
+  document.getElementById('result').innerHTML = `
+    <p>Base Cost: Rs. ${p.base.toLocaleString('en-IN')}</p>
+    <p>Profit: Rs. ${p.profit.toLocaleString('en-IN')}</p>
+    <p>GST: Rs. ${p.gst.toLocaleString('en-IN')}</p>
+    <hr>
+    <p class="total">Client Price: Rs. ${p.total.toLocaleString('en-IN')}</p>
+    <p class="small">Calculated on: ${p.datetime}</p>
+  `;
+
+  renderChart(p.material,p.works,p.profit);
+  saveProject(p);
+}
+
+/* ---------- CHART ---------- */
+function renderChart(m,w,p){
+  if(chartObj) chartObj.destroy();
+  chartObj = new Chart(document.getElementById('chart'),{
+    type:'pie',
+    data:{labels:['Material','Work','Profit'], datasets:[{data:[m,w,p]}]}
+  });
+}
+
+/* ---------- STORAGE ---------- */
+function saveProject(p){
+  let key = "projects_"+currentUser;
+  let list = JSON.parse(localStorage.getItem(key)) || [];
+  list.unshift(p);
+  localStorage.setItem(key, JSON.stringify(list));
+  loadHistory();
+}
+
+function loadHistory(){
+  let list = JSON.parse(localStorage.getItem("projects_"+currentUser)) || [];
+  document.getElementById('projectHistory').innerHTML = "";
+  list.forEach((p,i)=>{
+    document.getElementById('projectHistory').innerHTML += `
+      <div class="history-item">
+        <b>${p.name}</b> (${p.location})<br>
+        <span class="small">Rs. ${p.total.toLocaleString('en-IN')}</span> | <span class="small">${p.datetime}</span><br>
+        <button class="action-btn" onclick="editProject(${i})">Edit</button>
+        <button class="action-btn danger" onclick="deleteProject(${i})">Delete</button>
+        <button class="action-btn" onclick="downloadPDF(${i})">Quotation PDF</button>
+      </div>
+    `;
+  });
+}
+
+ /* ---------- EDIT ---------- */
+function editProject(i){
+  let p = JSON.parse(localStorage.getItem("projects_"+currentUser))[i];
+  document.getElementById('projectName').value = p.name;
+  document.getElementById('location').value = p.location;
+  document.getElementById('profitPercent').value = p.profitPercent;
+  document.getElementById('gstPercent').value = p.gstPercent;
+}
+
+/* ---------- DELETE ---------- */
+function deleteProject(i){
+  if(!confirm("Delete this project?")) return;
+  let key = "projects_"+currentUser;
+  let list = JSON.parse(localStorage.getItem(key));
+  list.splice(i,1);
+  localStorage.setItem(key,JSON.stringify(list));
+  loadHistory();
+}
+
+/* ---------- LOGO BASE64 HELPER ---------- */
+function getBase64FromUrl(url){
+ return new Promise((resolve,reject)=>{
+  const img=new Image();
+  img.crossOrigin="anonymous";
+  img.onload=()=>{
+   const c=document.createElement("canvas");
+   c.width=img.width;c.height=img.height;
+   c.getContext("2d").drawImage(img,0,0);
+   resolve(c.toDataURL("image/png"));
+  };
+  img.onerror=reject;
+  img.src=url;
+ });
+}
+
+/* ---------- PDF WITH LOGO (BIG TEXT VERSION) ---------- */
+async function downloadPDF(i){
+  let p = JSON.parse(localStorage.getItem("projects_"+currentUser))[i];
+  const pdf = new jsPDF();
+
+  // LOGO
+  const logo = await getBase64FromUrl(
+    "https://i.ibb.co/zWmTqjR3/co-builder-logo-png.png"
+  );
+  pdf.addImage(logo, "PNG", 80, 10, 50, 35);
+
+  let y = 60;
+
+  /* ---------- TITLE ---------- */
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(20);                 // 🔥 BIG TITLE
+  pdf.text("CONSTRUCTION QUOTATION", 105, y, { align: "center" });
+  y += 18;
+
+  /* ---------- PROJECT INFO ---------- */
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(14);                 // 🔥 Bigger text
+  pdf.text(`Project Name : ${p.name}`, 20, y); y += 10;
+  pdf.text(`Location     : ${p.location}`, 20, y); y += 10;
+  pdf.text(`Date         : ${p.datetime}`, 20, y); y += 14;
+
+  /* ---------- COST BREAKDOWN ---------- */
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(16);
+  pdf.text("COST DETAILS", 20, y); 
+  y += 12;
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(14);
+
+  pdf.text(`Material Cost : Rs. ${p.material.toLocaleString('en-IN')}`, 30, y); y += 10;
+  pdf.text(`Work Cost     : Rs. ${p.works.toLocaleString('en-IN')}`, 30, y); y += 10;
+  pdf.text(`Profit        : Rs. ${p.profit.toLocaleString('en-IN')}`, 30, y); y += 10;
+  pdf.text(`GST           : Rs. ${p.gst.toLocaleString('en-IN')}`, 30, y); y += 14;
+
+  /* ---------- TOTAL ---------- */
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(18);                 // 🔥 VERY BIG TOTAL
+  pdf.text(`TOTAL AMOUNT : Rs. ${p.total.toLocaleString('en-IN')}`, 20, y);
+
+  /* ---------- FOOTER ---------- */
+  pdf.setFontSize(11);
+  pdf.setFont("helvetica", "italic");
+  pdf.text("Prepared by cobuilder – Your Construction Estimation Partner", 105, 285, { align: "center" });
+
+  pdf.save(p.name + ".pdf");
+}
+</script>
+</body>
+</html>
